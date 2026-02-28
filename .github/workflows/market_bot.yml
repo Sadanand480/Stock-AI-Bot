@@ -1,0 +1,33 @@
+name: Market Data Fetcher
+
+on:
+  schedule:
+    # Ye Monday to Friday, Indian Market hours (3:30 AM to 10:30 AM UTC) chalega
+    - cron: '*/15 3-10 * * 1-5' 
+  workflow_dispatch: # Manual button ke liye
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: pip install yfinance pandas
+
+      - name: Run Scraper
+        run: python cloud_fetcher.py
+
+      - name: Auto-Commit Changes
+        run: |
+          git config --global user.name "Market-Bot"
+          git config --global user.email "bot@github.com"
+          git add market_tracker.csv
+          git commit -m "Updated data from Cloud" || echo "No changes to commit"
+          git push
