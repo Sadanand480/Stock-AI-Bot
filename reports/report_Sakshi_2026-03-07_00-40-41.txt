@@ -1,0 +1,66 @@
+=================================================================
+        AI FINANCIAL ADVISOR — PERSONALIZED REPORT
+=================================================================
+  Generated : 2026-03-07 00:40:41
+  For       : Sakshi
+
+-----------------------------------------------------------------
+  SECTION 1: USER PROFILE
+-----------------------------------------------------------------
+  Name           : Sakshi
+  Age            : 24
+  Monthly Income : Rs.50,000
+  Total Savings  : Rs.250,000
+  Monthly Expense: Rs.20,000
+
+-----------------------------------------------------------------
+  SECTION 2: RISK ASSESSMENT
+-----------------------------------------------------------------
+  Risk Score          : 78/100
+  Risk Level          : Aggressive
+  Disposable Income   : Rs.30,000
+  Monthly Investable  : Rs.15,000
+
+-----------------------------------------------------------------
+  SECTION 3: PORTFOLIO ALLOCATION
+-----------------------------------------------------------------
+  Strategy        : Aggressive (78/100) — Maximum growth focus, high volatility acceptable.
+  Expected Return : 14-20% annually
+
+  Category             %          Amount (Rs.)   
+  ---------------------------------------------
+  Stocks               48%             7,200
+  Mutual Funds         23%             3,450
+  ETFs                 14%             2,100
+  Fixed Deposit        15%             2,250
+
+  Recommended Stocks : ONGC.BO, KPITTECH.BO, PERSISTENT.BO, TECHM.BO, INFY.BO, ITC.BO, LTIM.BO, COFORGE.BO, ICICIBANK.BO, HCLTECH.BO
+  Recommended ETFs   : MON100.NS, ITBEES.NS, MAFANG.NS, GOLDBEES.NS, PHARMABEES.NS
+
+-----------------------------------------------------------------
+  SECTION 4: AI PERSONALIZED ADVICE
+-----------------------------------------------------------------
+
+Sakshi, let's review your financial health: You have a good income, decent savings, and managed expenses, which is a great start. Your disposable income is substantial, allowing for significant investments. However, it's essential to balance risk and returns to ensure long-term financial stability.
+
+For the top 5 most relevant stocks:
+1. INFY.BO: BUY - Because the predicted price is higher than the current price, indicating potential growth.
+2. HDFCBANK.BO: SELL - Since the predicted price is lower than the current price, it may be a good time to sell.
+3. ICICIBANK.BO: SELL - The predicted price is lower, suggesting a potential decline in value.
+4. HCLTECH.BO: SELL - Similar to ICICIBANK, the predicted price is lower, indicating a possible decrease.
+5. AXISBANK.BO: SELL - The predicted price is lower, which may be a sign to sell and avoid potential losses.
+
+Regarding your portfolio allocation, it seems to be moderately aggressive, with 48% in stocks, which may not be ideal for everyone. As an aggressive investor, you're taking on more risk, but you also have the potential for higher returns. However, it's crucial to consider your personal comfort level with risk and adjust your portfolio accordingly.
+
+Here are some actionable financial tips:
+1. **Diversify** [spread your investments across different types] to reduce risk and increase potential returns.
+2. Set a **budget** [a plan for how you want to spend your money] to track your expenses and ensure you're saving enough.
+3. Consider **long-term investments** [investing for a longer period, usually more than 5 years], as they often provide more stable returns.
+4. Regularly review and **rebalance** [adjust] your portfolio to ensure it remains aligned with your financial goals and risk tolerance.
+
+Remember, investing is a long-term game. It's essential to be patient, informed, and disciplined to achieve your financial objectives. Always prioritize understanding and managing risk to secure a stable financial future.
+
+=================================================================
+  Disclaimer: This advice is AI-generated. Please consult
+  a certified financial advisor before making investments.
+=================================================================

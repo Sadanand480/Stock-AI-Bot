@@ -1,0 +1,75 @@
+=================================================================
+        AI FINANCIAL ADVISOR — PERSONALIZED REPORT
+=================================================================
+  Generated : 2026-03-06 09:26:51
+  For       : Laxman
+
+-----------------------------------------------------------------
+  SECTION 1: USER PROFILE
+-----------------------------------------------------------------
+  Name           : Laxman
+  Age            : 58
+  Monthly Income : Rs.100,000
+  Total Savings  : Rs.250,000
+  Monthly Expense: Rs.40,000
+
+-----------------------------------------------------------------
+  SECTION 2: RISK ASSESSMENT
+-----------------------------------------------------------------
+  Risk Score          : 50/100
+  Risk Level          : Moderate
+  Disposable Income   : Rs.60,000
+  Monthly Investable  : Rs.30,000
+
+-----------------------------------------------------------------
+  SECTION 3: PORTFOLIO ALLOCATION
+-----------------------------------------------------------------
+  Strategy        : Balanced growth — risk aur safety dono milti hai.
+  Expected Return : 10-15% annually
+
+  Category             %          Amount (Rs.)   
+  ---------------------------------------------
+  Stocks               30%             9,000
+  Mutual Funds         30%             9,000
+  ETFs                 20%             6,000
+  Fixed Deposit        20%             6,000
+
+  Recommended Stocks : RELIANCE.BO, HDFCBANK.BO, INFY.BO, TCS.BO, ICICIBANK.BO
+  Recommended ETFs   : NIFTYBEES.NS, BANKBEES.NS, JUNIORBEES.NS
+
+-----------------------------------------------------------------
+  SECTION 4: MARKET PREDICTIONS (AI Model)
+-----------------------------------------------------------------
+  Symbol             Current      Predicted    Action  
+  --------------------------------------------------
+  ADANIGREEN.BO      885.05       865.14       SELL    
+  AXISBANK.BO        1350.70      1338.76      SELL    
+  BAJFINANCE.BO      962.30       947.93       SELL    
+  BANKBEES.NS        608.63       603.90       SELL    
+  BRITANNIA.BO       5956.95      5904.60      SELL    
+  CHOLAFIN.BO        1671.15      1641.63      SELL    
+  COFORGE.BO         1152.55      1149.43      SELL    
+  COLPAL.BO          2196.00      2178.77      SELL    
+  DABUR.BO           487.85       481.79       SELL    
+  GOLDBEES.NS        132.24       131.83       SELL    
+  HCLTECH.BO         1354.00      1347.77      SELL    
+  HDFCBANK.BO        878.05       870.33       SELL    
+  HINDUNILVR.BO      2253.80      2240.94      SELL    
+  ICICIBANK.BO       1359.45      1354.93      SELL    
+  INFY.BO            1304.90      1306.58      BUY     
+  ITBEES.NS          33.27        33.23        SELL    
+  ITC.BO             311.55       311.09       SELL    
+  JINDALSTEL.BO      1183.90      1159.07      SELL    
+  JUNIORBEES.NS      729.31       718.92       SELL    
+  KOTAKBANK.BO       407.55       405.15       SELL    
+
+-----------------------------------------------------------------
+  SECTION 5: AI PERSONALIZED ADVICE
+-----------------------------------------------------------------
+
+[!] Error: Error code: 400 - {'error': {'message': 'The model `llama3-8b-8192` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}
+
+=================================================================
+  Disclaimer: Ye advice AI-generated hai. Investment se pehle
+  apne financial advisor se zaroor consult karna.
+=================================================================

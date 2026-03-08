@@ -1,0 +1,66 @@
+=================================================================
+        AI FINANCIAL ADVISOR — PERSONALIZED REPORT
+=================================================================
+  Generated : 2026-03-07 00:57:07
+  For       : Sadanand
+
+-----------------------------------------------------------------
+  SECTION 1: USER PROFILE
+-----------------------------------------------------------------
+  Name           : Sadanand
+  Age            : 20
+  Monthly Income : Rs.50,000
+  Total Savings  : Rs.250,000
+  Monthly Expense: Rs.30,000
+
+-----------------------------------------------------------------
+  SECTION 2: RISK ASSESSMENT
+-----------------------------------------------------------------
+  Risk Score          : 71/100
+  Risk Level          : Aggressive
+  Disposable Income   : Rs.20,000
+  Monthly Investable  : Rs.10,000
+
+-----------------------------------------------------------------
+  SECTION 3: PORTFOLIO ALLOCATION
+-----------------------------------------------------------------
+  Strategy        : Aggressive (71/100) — Growth-oriented with some stability cushion.
+  Expected Return : 14-20% annually
+
+  Category             %          Amount (Rs.)   
+  ---------------------------------------------
+  Stocks               44%             4,400
+  Mutual Funds         22%             2,200
+  ETFs                 16%             1,600
+  Fixed Deposit        18%             1,800
+
+  Recommended Stocks : ONGC.BO, KPITTECH.BO, PERSISTENT.BO, TECHM.BO, INFY.BO, ITC.BO, LTIM.BO, COFORGE.BO, ICICIBANK.BO, HCLTECH.BO
+  Recommended ETFs   : MON100.NS, ITBEES.NS, MAFANG.NS, GOLDBEES.NS, PHARMABEES.NS
+
+-----------------------------------------------------------------
+  SECTION 4: AI PERSONALIZED ADVICE
+-----------------------------------------------------------------
+
+Sadanand, let's analyze your financial health. You're earning a good income of Rs. 50,000 per month, and your savings are decent at Rs. 2,50,000. However, your expenses are relatively high at Rs. 30,000 per month. 
+
+For the top 5 most relevant stocks, here are my recommendations:
+1. INFY.BO: BUY - This stock is predicted to increase in value, making it a good investment.
+2. HCLTECH.BO: SELL - The predicted price is lower than the current price, so it's best to sell.
+3. HDFCBANK.BO: SELL - The predicted price is lower, indicating a potential loss if you hold on.
+4. ICICIBANK.BO: SELL - The predicted price is lower, suggesting it's time to sell.
+5. AXISBANK.BO: SELL - The predicted price is lower, making it a good time to exit this investment.
+
+Your portfolio allocation is somewhat aggressive, with 44% in stocks, which may not be suitable for everyone. A more balanced approach might be better, considering your age and risk level. [Risk level refers to how willing you are to take risks with your investments.]
+
+Here are some actionable financial tips for you:
+1. Start an emergency fund [a savings account used for unexpected expenses] to cover 3-6 months of living expenses.
+2. Reduce your expenses and try to save more, aiming for 30% of your income.
+3. Consider investing in a tax-saving [reducing the amount of tax you pay] instrument, like a Public Provident Fund (PPF) or National Pension System (NPS).
+4. Educate yourself on personal finance and investing to make informed decisions.
+
+Remember, investing is a long-term game, and it's essential to be patient and disciplined. Always review and adjust your portfolio regularly to ensure it aligns with your financial goals.
+
+=================================================================
+  Disclaimer: This advice is AI-generated. Please consult
+  a certified financial advisor before making investments.
+=================================================================

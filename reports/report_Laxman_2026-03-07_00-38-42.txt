@@ -1,0 +1,66 @@
+=================================================================
+        AI FINANCIAL ADVISOR — PERSONALIZED REPORT
+=================================================================
+  Generated : 2026-03-07 00:38:42
+  For       : Laxman
+
+-----------------------------------------------------------------
+  SECTION 1: USER PROFILE
+-----------------------------------------------------------------
+  Name           : Laxman
+  Age            : 58
+  Monthly Income : Rs.10,000
+  Total Savings  : Rs.25,000
+  Monthly Expense: Rs.4,000
+
+-----------------------------------------------------------------
+  SECTION 2: RISK ASSESSMENT
+-----------------------------------------------------------------
+  Risk Score          : 40/100
+  Risk Level          : Moderate
+  Disposable Income   : Rs.6,000
+  Monthly Investable  : Rs.3,000
+
+-----------------------------------------------------------------
+  SECTION 3: PORTFOLIO ALLOCATION
+-----------------------------------------------------------------
+  Strategy        : Moderate (40/100) — Balanced approach, moderate risk tolerance.
+  Expected Return : 8-13% annually
+
+  Category             %          Amount (Rs.)   
+  ---------------------------------------------
+  Stocks               27%               810
+  Mutual Funds         19%               570
+  ETFs                 22%               660
+  Fixed Deposit        32%               960
+
+  Recommended Stocks : ONGC.BO, KPITTECH.BO, PERSISTENT.BO, TECHM.BO, INFY.BO, ITC.BO, LTIM.BO, COFORGE.BO
+  Recommended ETFs   : MON100.NS, ITBEES.NS, MAFANG.NS, GOLDBEES.NS, PHARMABEES.NS, BANKBEES.NS
+
+-----------------------------------------------------------------
+  SECTION 4: AI PERSONALIZED ADVICE
+-----------------------------------------------------------------
+
+Here's an analysis of Laxman's financial profile:
+
+Laxman's financial health is relatively stable, with a moderate risk score and a decent amount of savings. However, his expenses are significant, leaving him with limited disposable income. He should prioritize saving and investing wisely to secure his financial future.
+
+For the top 5 stocks, here are my BUY/SELL/HOLD recommendations with a simple reason:
+1. INFY.BO: BUY - Because its predicted price is higher than the current price, indicating potential growth.
+2. HDFCBANK.BO: SELL - Because its predicted price is lower than the current price, indicating potential loss.
+3. ICICIBANK.BO: SELL - Because its predicted price is lower than the current price, indicating potential decline.
+4. HCLTECH.BO: SELL - Because its predicted price is lower than the current price, indicating potential decrease.
+5. AXISBANK.BO: SELL - Because its predicted price is lower than the current price, indicating potential downturn.
+
+The portfolio allocation seems suitable for Laxman, with a mix of high-risk [investments that may fluctuate in value] and low-risk [investments that are more stable] assets. The allocation to Fixed Deposits [a type of savings account with a fixed interest rate] provides stability, while the allocation to Stocks, Mutual Funds [a type of investment that pools money from many people], and ETFs [a type of investment that tracks a specific market index] offers potential for growth.
+
+Here are 4 actionable financial tips for Laxman:
+1. Start a systematic investment plan [a regular investment plan] to invest a fixed amount regularly, reducing the impact of market fluctuations.
+2. Review and adjust your expenses to increase your disposable income, which can be invested for the future.
+3. Consider investing in a tax-saving instrument [an investment that reduces your tax liability], such as a Public Provident Fund [a long-term savings scheme], to optimize your savings.
+4. Educate yourself on basic investing concepts, such as [compound interest] and [diversification], to make informed investment decisions.
+
+=================================================================
+  Disclaimer: This advice is AI-generated. Please consult
+  a certified financial advisor before making investments.
+=================================================================
