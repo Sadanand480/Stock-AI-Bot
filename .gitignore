@@ -1,0 +1,28 @@
+# Secret files
+.env
+users.json
+
+# ML Model files (badi hoti hain)
+*.h5
+*.pkl
+
+# Virtual environment
+.venv/
+venv/
+
+# VS Code
+.vscode/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Executables
+*.exe
+
+# Data files (optional — agar private rakhna ho)
+# market_tracker.csv
+# user_profile.csv
+
+# Generated reports
+reports/
