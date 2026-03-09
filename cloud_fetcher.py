@@ -10,12 +10,12 @@ symbols = [
     "BAJFINANCE.BO", "CHOLAFIN.BO", "PFC.BO", "RECLTD.BO", "MUTHOOTFIN.BO",
     # --- IT SECTOR ---
     "TCS.BO", "INFY.BO", "HCLTECH.BO", "WIPRO.BO", "TECHM.BO", 
-    "LTIM.BO", "PERSISTENT.BO", "COFORGE.BO", "KPITTECH.BO", "TATAELXSI.BO",
+    "PERSISTENT.BO", "COFORGE.BO", "KPITTECH.BO", "TATAELXSI.BO",
     # --- FMCG & CONSUMPTION ---
     "HINDUNILVR.BO", "ITC.BO", "NESTLEIND.BO", "BRITANNIA.BO", "TATACONSUM.BO",
     "VBL.BO", "DABUR.BO", "MARICO.BO", "COLPAL.BO", "TITAN.BO",
     # --- AUTO & ENERGY ---
-    "TATAMOTORS.BO", "MARUTI.BO", "M&M.BO", "RELIANCE.BO", "ONGC.BO",
+    "MARUTI.BO", "M&M.BO", "RELIANCE.BO", "ONGC.BO",
     "NTPC.BO", "POWERGRID.BO", "ADANIGREEN.BO", "TATASTEEL.BO", "JINDALSTEL.BO",
     # --- ETFs (Safe Investing) ---
     "NIFTYBEES.NS", "BANKBEES.NS", "GOLDBEES.NS", "SILVERBEES.NS", "ITBEES.NS",
@@ -23,8 +23,18 @@ symbols = [
 ]
 
 def fetch_and_save():
-    # Indian Time (IST) setup ke liye simple timestamp
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Indian market hours check (9:15 AM - 3:30 PM IST, Mon-Fri)
+    now_dt = datetime.now()
+    now = now_dt.strftime("%Y-%m-%d %H:%M:%S")
+    current_minutes = now_dt.hour * 60 + now_dt.minute
+    market_open = 9 * 60 + 15   # 9:15 AM
+    market_close = 15 * 60 + 30  # 3:30 PM
+    is_weekday = now_dt.weekday() < 5  # Mon=0 to Fri=4
+
+    if not is_weekday or current_minutes < market_open or current_minutes > market_close:
+        print(f"Market band hai ({now}). Data fetch skip kiya.")
+        return
+
     new_rows = []
     
     print(f"Fetching data for {len(symbols)} stocks...")
