@@ -285,13 +285,18 @@ def api_chart_data():
 
     price_arr = np.array(prices)
     n = len(price_arr)
+    current_price = prices[-1]
+
+    # --- Use only recent data for ML training (avoids old price bias) ---
+    MAX_TRAIN = 50  # last 50 points max for training
+    train_start = max(0, n - MAX_TRAIN)
+    train_prices = price_arr[train_start:]
+    nt = len(train_prices)
 
     # --- Time-based X values (handles gaps between fetches) ---
-    # Convert timestamps to minutes since first data point
     try:
         time_stamps = pd.to_datetime(stock_df['Time'].values)
         time_minutes = np.array([(t - time_stamps[0]).total_seconds() / 60.0 for t in time_stamps])
-        # Typical interval between last few points (for future step size)
         if n >= 2:
             recent_intervals = np.diff(time_minutes[-min(5, n):])
             avg_interval = np.mean(recent_intervals) if len(recent_intervals) > 0 else 1.0
@@ -300,19 +305,26 @@ def api_chart_data():
         if avg_interval <= 0:
             avg_interval = 1.0
     except Exception:
-        # Fallback to sequential if time parsing fails
         time_minutes = np.arange(n, dtype=float)
         avg_interval = 1.0
 
     X = time_minutes.reshape(-1, 1)
 
-    # --- 1. Polynomial Trend (degree 3) for historical data ---
-    degree = min(3, max(1, n // 5))
+    # --- Sequential index for polynomial (avoids time-gap extrapolation) ---
+    seq_idx = np.arange(nt, dtype=float).reshape(-1, 1)
+
+    # --- 1. Polynomial Trend (degree 2 max) for recent data ---
+    degree = min(2, max(1, nt // 5))
     poly = PolynomialFeatures(degree=degree)
-    X_poly = poly.fit_transform(X)
-    trend_model = Ridge(alpha=10.0)
-    trend_model.fit(X_poly, price_arr)
-    trend_line = trend_model.predict(X_poly).tolist()
+    X_poly_train = poly.fit_transform(seq_idx)
+    trend_model = Ridge(alpha=50.0)  # higher regularization
+    trend_model.fit(X_poly_train, train_prices)
+    # Full history trend line (for chart display)
+    full_seq = np.arange(n, dtype=float).reshape(-1, 1)
+    # Offset so training window aligns: full_seq for training range starts at 0
+    display_seq = np.arange(n, dtype=float).reshape(-1, 1) - train_start
+    X_poly_full = poly.transform(display_seq)
+    trend_line = trend_model.predict(X_poly_full).tolist()
     trend_line = [round(p, 2) for p in trend_line]
 
     # --- 2. Smoothed actual prices (EMA) ---
@@ -320,28 +332,35 @@ def api_chart_data():
     smoothed = pd.Series(prices).ewm(span=ema_span, adjust=False).mean().tolist()
     smoothed = [round(p, 2) for p in smoothed]
 
+    # --- Helper: cap predictions within ±MAX_PCT of current price ---
+    MAX_PCT = 0.02  # ±2% max deviation
+    def _cap_predictions(preds, cur):
+        lo = cur * (1 - MAX_PCT)
+        hi = cur * (1 + MAX_PCT)
+        return [round(max(lo, min(hi, p)), 2) for p in preds]
+
     # --- 3. Future predictions — FOUR models ---
     future_steps = 5
 
-    # Model A: Polynomial extrapolation (overall trend direction)
-    last_time = time_minutes[-1]
-    X_future_abs = np.array([last_time + avg_interval * (i + 1) for i in range(future_steps)]).reshape(-1, 1)
-    X_future_poly = poly.transform(X_future_abs)
+    # Model A: Polynomial extrapolation (sequential index)
+    last_seq = float(nt - 1)
+    X_future_seq = np.array([last_seq + (i + 1) for i in range(future_steps)]).reshape(-1, 1)
+    X_future_poly = poly.transform(X_future_seq)
     trend_future = trend_model.predict(X_future_poly).tolist()
-    trend_future = [round(p, 2) for p in trend_future]
+    trend_future = _cap_predictions(trend_future, current_price)
 
     # Model B: Weighted regression on recent data (short-term momentum)
-    recent_n = min(10, n)
-    recent_prices = price_arr[-recent_n:]
-    X_recent = time_minutes[-recent_n:].reshape(-1, 1)
+    recent_n = min(10, nt)
+    recent_prices = train_prices[-recent_n:]
+    X_recent = np.arange(recent_n, dtype=float).reshape(-1, 1)
     weights = np.exp(np.linspace(0, 2, recent_n))
     future_model = LR()
     future_model.fit(X_recent, recent_prices, sample_weight=weights)
-    X_future_mom = np.array([last_time + avg_interval * (i + 1) for i in range(future_steps)]).reshape(-1, 1)
+    X_future_mom = np.array([float(recent_n) + i for i in range(future_steps)]).reshape(-1, 1)
     momentum_future = future_model.predict(X_future_mom).tolist()
-    momentum_future = [round(p, 2) for p in momentum_future]
+    momentum_future = _cap_predictions(momentum_future, current_price)
 
-    # Model C: Random Forest Regressor (lag features)
+    # Model C: Random Forest Regressor (lag features on recent data)
     def _build_lag_features(arr, lag=3):
         Xf, yf = [], []
         for i in range(lag, len(arr)):
@@ -349,75 +368,76 @@ def api_chart_data():
             yf.append(arr[i])
         return np.array(Xf), np.array(yf)
 
-    lag = min(3, n - 2)
+    lag = min(3, nt - 2)
     rf_future = []
-    if lag >= 2 and n >= lag + 3:
-        X_rf, y_rf = _build_lag_features(price_arr, lag)
+    if lag >= 2 and nt >= lag + 3:
+        X_rf, y_rf = _build_lag_features(train_prices, lag)
         rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
         rf_model.fit(X_rf, y_rf)
-        # Predict future step by step
-        last_window = list(price_arr[-lag:])
+        last_window = list(train_prices[-lag:])
         for _ in range(future_steps):
             pred = rf_model.predict(np.array([last_window[-lag:]]))[0]
-            rf_future.append(round(float(pred), 2))
+            rf_future.append(float(pred))
             last_window.append(pred)
+        rf_future = _cap_predictions(rf_future, current_price)
     else:
         rf_future = momentum_future[:]
 
-    # Model D: Gradient Boosting Regressor (lag features)
+    # Model D: Gradient Boosting Regressor (lag features on recent data)
     gb_future = []
-    if lag >= 2 and n >= lag + 3:
-        X_gb, y_gb = _build_lag_features(price_arr, lag)
+    if lag >= 2 and nt >= lag + 3:
+        X_gb, y_gb = _build_lag_features(train_prices, lag)
         gb_model = GradientBoostingRegressor(n_estimators=100, max_depth=3, random_state=42)
         gb_model.fit(X_gb, y_gb)
-        last_window_gb = list(price_arr[-lag:])
+        last_window_gb = list(train_prices[-lag:])
         for _ in range(future_steps):
             pred = gb_model.predict(np.array([last_window_gb[-lag:]]))[0]
-            gb_future.append(round(float(pred), 2))
+            gb_future.append(float(pred))
             last_window_gb.append(pred)
+        gb_future = _cap_predictions(gb_future, current_price)
     else:
         gb_future = momentum_future[:]
 
-    # --- 4. Accuracy backtesting (all 4 models) ---
-    test_n = min(5, n // 2)
+    # --- 4. Accuracy backtesting (all 4 models on recent data) ---
+    test_n = min(5, nt // 2)
     backtest_details = []
     poly_accuracy = mom_accuracy = rf_accuracy = gb_accuracy = 0
     if test_n >= 2:
-        train_prices = price_arr[:-test_n]
-        true_prices = price_arr[-test_n:]
-        test_times = times[-test_n:]
-        nt = len(train_prices)
-        train_time_minutes = time_minutes[:nt]
-        test_time_minutes = time_minutes[nt:]
+        bt_train = train_prices[:-test_n]
+        true_prices = train_prices[-test_n:]
+        test_times = times[-(test_n):]
+        nbt = len(bt_train)
 
-        # Poly model backtest
-        Xt = train_time_minutes.reshape(-1, 1)
-        Xt_poly = poly.fit_transform(Xt)
-        bt_poly = Ridge(alpha=10.0)
-        bt_poly.fit(Xt_poly, train_prices)
-        Xp_test = poly.transform(test_time_minutes.reshape(-1, 1))
-        poly_pred_test = bt_poly.predict(Xp_test)
+        # Poly model backtest (sequential index)
+        bt_seq = np.arange(nbt, dtype=float).reshape(-1, 1)
+        bt_poly_feats = poly.fit_transform(bt_seq)
+        bt_poly_model = Ridge(alpha=50.0)
+        bt_poly_model.fit(bt_poly_feats, bt_train)
+        test_seq = np.arange(nbt, nbt + test_n, dtype=float).reshape(-1, 1)
+        Xp_test = poly.transform(test_seq)
+        poly_pred_test = bt_poly_model.predict(Xp_test)
         poly_errors = np.abs(poly_pred_test - true_prices) / true_prices * 100
         poly_accuracy = round(100 - np.mean(poly_errors), 2)
 
-        # Momentum model backtest
-        rn2 = min(10, nt)
-        rp2 = train_prices[-rn2:]
-        Xr2 = train_time_minutes[-rn2:].reshape(-1, 1)
+        # Momentum model backtest (sequential index)
+        rn2 = min(10, nbt)
+        rp2 = bt_train[-rn2:]
+        Xr2 = np.arange(rn2, dtype=float).reshape(-1, 1)
         w2 = np.exp(np.linspace(0, 2, rn2))
         bt_mom = LR()
         bt_mom.fit(Xr2, rp2, sample_weight=w2)
-        mom_pred_test = bt_mom.predict(test_time_minutes.reshape(-1, 1))
+        mom_test_seq = np.arange(rn2, rn2 + test_n, dtype=float).reshape(-1, 1)
+        mom_pred_test = bt_mom.predict(mom_test_seq)
         mom_errors = np.abs(mom_pred_test - true_prices) / true_prices * 100
         mom_accuracy = round(100 - np.mean(mom_errors), 2)
 
         # Random Forest backtest
         rf_pred_test = np.zeros(test_n)
-        if lag >= 2 and nt >= lag + 3:
-            X_rf_bt, y_rf_bt = _build_lag_features(train_prices, lag)
+        if lag >= 2 and nbt >= lag + 3:
+            X_rf_bt, y_rf_bt = _build_lag_features(bt_train, lag)
             bt_rf = RandomForestRegressor(n_estimators=100, random_state=42)
             bt_rf.fit(X_rf_bt, y_rf_bt)
-            window = list(train_prices[-lag:])
+            window = list(bt_train[-lag:])
             for i in range(test_n):
                 rf_pred_test[i] = bt_rf.predict(np.array([window[-lag:]]))[0]
                 window.append(true_prices[i])
@@ -428,11 +448,11 @@ def api_chart_data():
 
         # Gradient Boosting backtest
         gb_pred_test = np.zeros(test_n)
-        if lag >= 2 and nt >= lag + 3:
-            X_gb_bt, y_gb_bt = _build_lag_features(train_prices, lag)
+        if lag >= 2 and nbt >= lag + 3:
+            X_gb_bt, y_gb_bt = _build_lag_features(bt_train, lag)
             bt_gb = GradientBoostingRegressor(n_estimators=100, max_depth=3, random_state=42)
             bt_gb.fit(X_gb_bt, y_gb_bt)
-            window_gb = list(train_prices[-lag:])
+            window_gb = list(bt_train[-lag:])
             for i in range(test_n):
                 gb_pred_test[i] = bt_gb.predict(np.array([window_gb[-lag:]]))[0]
                 window_gb.append(true_prices[i])
@@ -652,13 +672,20 @@ def api_chart_data():
         'Neutral' if indicators['tech_score'] >= 40 else (
         'Sell' if indicators['tech_score'] >= 20 else 'Strong Sell')))
 
-    # --- 6. Indicator-Adjusted Predictions ---
-    tech_bias = (indicators['tech_score'] - 50) / 500
-    adjusted_momentum = [round(p * (1 + tech_bias * (i + 1) * 0.3), 2) for i, p in enumerate(momentum_future)]
-    adjusted_poly = [round(p * (1 + tech_bias * (i + 1) * 0.2), 2) for i, p in enumerate(trend_future)]
-    adjusted_rf = [round(p * (1 + tech_bias * (i + 1) * 0.25), 2) for i, p in enumerate(rf_future)]
-    adjusted_gb = [round(p * (1 + tech_bias * (i + 1) * 0.25), 2) for i, p in enumerate(gb_future)]
-    adjusted_ensemble = [round(p * (1 + tech_bias * (i + 1) * 0.2), 2) for i, p in enumerate(ensemble_future)]
+    # --- 6. Indicator-Adjusted Predictions (gentle nudge, not aggressive) ---
+    tech_bias = (indicators['tech_score'] - 50) / 5000  # very mild bias
+    adjusted_momentum = [round(p * (1 + tech_bias * (i + 1) * 0.1), 2) for i, p in enumerate(momentum_future)]
+    adjusted_poly = [round(p * (1 + tech_bias * (i + 1) * 0.1), 2) for i, p in enumerate(trend_future)]
+    adjusted_rf = [round(p * (1 + tech_bias * (i + 1) * 0.1), 2) for i, p in enumerate(rf_future)]
+    adjusted_gb = [round(p * (1 + tech_bias * (i + 1) * 0.1), 2) for i, p in enumerate(gb_future)]
+    adjusted_ensemble = [round(p * (1 + tech_bias * (i + 1) * 0.1), 2) for i, p in enumerate(ensemble_future)]
+
+    # Final cap on adjusted predictions too
+    adjusted_momentum = _cap_predictions(adjusted_momentum, current_price)
+    adjusted_poly = _cap_predictions(adjusted_poly, current_price)
+    adjusted_rf = _cap_predictions(adjusted_rf, current_price)
+    adjusted_gb = _cap_predictions(adjusted_gb, current_price)
+    adjusted_ensemble = _cap_predictions(adjusted_ensemble, current_price)
 
     # Future labels
     future_labels = [f'Future +{i+1}' for i in range(future_steps)]
@@ -857,25 +884,16 @@ def api_candle_data():
                     stoch_data.append({"time": candles[i]["time"], "k": round(float(stoch_k.iloc[i]), 2),
                                        "d": round(float(stoch_d.iloc[i]), 2) if not pd.isna(stoch_d.iloc[i]) else None})
 
-        # Future Predictions (Momentum weighted regression)
+        # Momentum prediction removed — candlestick chart is technical analysis only
         from sklearn.linear_model import LinearRegression
-        future_steps = 5
         close_arr = closes.values
-        recent_n = min(10, n)
-        X_r = np.arange(recent_n).reshape(-1, 1)
-        w = np.exp(np.linspace(0, 2, recent_n))
-        mdl = LinearRegression()
-        mdl.fit(X_r, close_arr[-recent_n:], sample_weight=w)
 
         interval_secs = {'1m': 60, '5m': 300, '15m': 900, '1h': 3600, '1d': 86400}
         step_sec = interval_secs.get(interval, 300)
         last_t = candles[-1]["time"]
         last_close = candles[-1]["close"]
 
-        future = [{"time": last_t, "value": last_close}]
-        for i in range(future_steps):
-            p = mdl.predict(np.array([[recent_n + i]]))[0]
-            future.append({"time": last_t + step_sec * (i + 1), "value": round(float(p), 2)})
+        future = []
 
         # SuperTrend markers (buy/sell signals)
         markers = []
@@ -1027,131 +1045,14 @@ def api_candle_data():
             'Neutral' if ind_summary['tech_score'] >= 40 else (
             'Sell' if ind_summary['tech_score'] >= 20 else 'Strong Sell')))
 
-        # --- RF / GB / Ensemble Predictions ---
-        from sklearn.preprocessing import PolynomialFeatures
-        from sklearn.linear_model import Ridge
-        from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-
-        # Poly trend future
-        X_all = np.arange(n).reshape(-1, 1)
-        degree_c = min(3, max(1, n // 5))
-        poly_feat = PolynomialFeatures(degree=degree_c)
-        X_poly_c = poly_feat.fit_transform(X_all)
-        poly_mdl_c = Ridge(alpha=10.0)
-        poly_mdl_c.fit(X_poly_c, close_arr)
-        poly_future_data = [{"time": last_t, "value": round(float(close_arr[-1]), 2)}]
-        for i in range(future_steps):
-            p = poly_mdl_c.predict(poly_feat.transform(np.array([[n + i]])))[0]
-            poly_future_data.append({"time": last_t + step_sec * (i + 1), "value": round(float(p), 2)})
-
-        # RF future
-        def _build_lag_c(arr, lag=3):
-            Xf, yf = [], []
-            for i in range(lag, len(arr)):
-                Xf.append(arr[i-lag:i])
-                yf.append(arr[i])
-            return np.array(Xf), np.array(yf)
-
-        lag_c = min(3, n - 2)
-        rf_future_data = [{"time": last_t, "value": round(float(close_arr[-1]), 2)}]
-        gb_future_data = [{"time": last_t, "value": round(float(close_arr[-1]), 2)}]
-
-        if lag_c >= 2 and n >= lag_c + 3:
-            X_rf_c, y_rf_c = _build_lag_c(close_arr, lag_c)
-            rf_mdl_c = RandomForestRegressor(n_estimators=100, random_state=42)
-            rf_mdl_c.fit(X_rf_c, y_rf_c)
-            win_rf = list(close_arr[-lag_c:])
-            for i in range(future_steps):
-                p = rf_mdl_c.predict(np.array([win_rf[-lag_c:]]))[0]
-                rf_future_data.append({"time": last_t + step_sec * (i + 1), "value": round(float(p), 2)})
-                win_rf.append(p)
-
-            X_gb_c, y_gb_c = _build_lag_c(close_arr, lag_c)
-            gb_mdl_c = GradientBoostingRegressor(n_estimators=100, max_depth=3, random_state=42)
-            gb_mdl_c.fit(X_gb_c, y_gb_c)
-            win_gb = list(close_arr[-lag_c:])
-            for i in range(future_steps):
-                p = gb_mdl_c.predict(np.array([win_gb[-lag_c:]]))[0]
-                gb_future_data.append({"time": last_t + step_sec * (i + 1), "value": round(float(p), 2)})
-                win_gb.append(p)
-        else:
-            rf_future_data = future[:]
-            gb_future_data = future[:]
-
-        # Backtest accuracy
-        test_nc = min(5, n // 2)
+        # ML predictions removed from candle-data — candlestick chart is for
+        # technical analysis only. Predictions are served by /api/chart-data.
+        poly_future_data = []
+        rf_future_data = []
+        gb_future_data = []
+        ensemble_future_data = []
         poly_acc_c = mom_acc_c = rf_acc_c = gb_acc_c = 0.0
-        if test_nc >= 2:
-            train_c = close_arr[:-test_nc]
-            true_c = close_arr[-test_nc:]
-            ntc = len(train_c)
-
-            # Poly backtest
-            Xtc = np.arange(ntc).reshape(-1, 1)
-            Xtpc = poly_feat.fit_transform(Xtc)
-            pm_bt = Ridge(alpha=10.0)
-            pm_bt.fit(Xtpc, train_c)
-            pp_bt = pm_bt.predict(poly_feat.transform(np.arange(ntc, ntc + test_nc).reshape(-1, 1)))
-            poly_acc_c = round(100 - float(np.mean(np.abs(pp_bt - true_c) / true_c * 100)), 2)
-
-            # Momentum backtest
-            rn_bt = min(10, ntc)
-            Xr_bt = np.arange(rn_bt).reshape(-1, 1)
-            w_bt = np.exp(np.linspace(0, 2, rn_bt))
-            mm_bt = LinearRegression()
-            mm_bt.fit(Xr_bt, train_c[-rn_bt:], sample_weight=w_bt)
-            mp_bt = mm_bt.predict(np.arange(rn_bt, rn_bt + test_nc).reshape(-1, 1))
-            mom_acc_c = round(100 - float(np.mean(np.abs(mp_bt - true_c) / true_c * 100)), 2)
-
-            # RF backtest
-            if lag_c >= 2 and ntc >= lag_c + 3:
-                Xr_bt2, yr_bt2 = _build_lag_c(train_c, lag_c)
-                rm_bt = RandomForestRegressor(n_estimators=100, random_state=42)
-                rm_bt.fit(Xr_bt2, yr_bt2)
-                win_r_bt = list(train_c[-lag_c:])
-                rp_bt = []
-                for i in range(test_nc):
-                    p = rm_bt.predict(np.array([win_r_bt[-lag_c:]]))[0]
-                    rp_bt.append(p)
-                    win_r_bt.append(true_c[i])
-                rf_acc_c = round(100 - float(np.mean(np.abs(np.array(rp_bt) - true_c) / true_c * 100)), 2)
-
-            # GB backtest
-            if lag_c >= 2 and ntc >= lag_c + 3:
-                Xg_bt2, yg_bt2 = _build_lag_c(train_c, lag_c)
-                gm_bt = GradientBoostingRegressor(n_estimators=100, max_depth=3, random_state=42)
-                gm_bt.fit(Xg_bt2, yg_bt2)
-                win_g_bt = list(train_c[-lag_c:])
-                gp_bt = []
-                for i in range(test_nc):
-                    p = gm_bt.predict(np.array([win_g_bt[-lag_c:]]))[0]
-                    gp_bt.append(p)
-                    win_g_bt.append(true_c[i])
-                gb_acc_c = round(100 - float(np.mean(np.abs(np.array(gp_bt) - true_c) / true_c * 100)), 2)
-
-        acc_map_c = {'poly': poly_acc_c, 'momentum': mom_acc_c, 'rf': rf_acc_c, 'gb': gb_acc_c}
-        better_model_c = max(acc_map_c, key=acc_map_c.get)
-
-        # Ensemble
-        total_acc_c = sum(acc_map_c.values())
-        if total_acc_c > 0:
-            wts_c = {k: v / total_acc_c for k, v in acc_map_c.items()}
-        else:
-            wts_c = {k: 0.25 for k in acc_map_c}
-
-        ensemble_future_data = [{"time": last_t, "value": round(float(close_arr[-1]), 2)}]
-        for i in range(future_steps):
-            ev = (poly_future_data[i + 1]["value"] * wts_c['poly'] +
-                  future[i + 1]["value"] * wts_c['momentum'] +
-                  rf_future_data[i + 1]["value"] * wts_c['rf'] +
-                  gb_future_data[i + 1]["value"] * wts_c['gb'])
-            ensemble_future_data.append({"time": last_t + step_sec * (i + 1), "value": round(ev, 2)})
-
-        # Adjust predictions with technical bias
-        tech_bias_c = (ind_summary['tech_score'] - 50) / 500
-        for lst in [poly_future_data, rf_future_data, gb_future_data, ensemble_future_data, future]:
-            for i in range(1, len(lst)):
-                lst[i]["value"] = round(lst[i]["value"] * (1 + tech_bias_c * i * 0.2), 2)
+        better_model_c = ''
 
         return flask.jsonify({
             "status": "ok", "symbol": symbol, "interval": interval,

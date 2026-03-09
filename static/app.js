@@ -505,6 +505,7 @@ let _macdChart = null;
 let _candleSeries = null;
 let _volSeries = null;
 let _lastCandleData = null;
+let _chartPredictions = null;  // stores chart-data predictions for candle overlay
 
 // Load stock list into dropdown
 (async function loadStockList() {
@@ -625,6 +626,65 @@ function updateIndicatorsPanel(ind) {
             <div class="ind-card"><div class="ind-name">CCI (20)</div><div class="ind-val">${ind.cci != null ? ind.cci : 'N/A'}</div><div class="ind-sig" style="color:${sigColor(ind.cci_signal)}">${ind.cci_signal || 'N/A'}</div></div>
             <div class="ind-card"><div class="ind-name">ADX (14)</div><div class="ind-val">${ind.adx != null ? ind.adx : 'N/A'}</div><div class="ind-sig" style="color:${sigColor(ind.adx_signal)}">${ind.adx_signal || 'N/A'}</div></div>
             <div class="ind-card"><div class="ind-name">Pivot Points</div><div class="ind-val">${ind.pivot != null ? 'P: ₹'+fmt(ind.pivot) : 'N/A'}</div><div class="ind-sig" style="color:${sigColor(ind.pivot_signal)}">${ind.pivot_signal || 'N/A'}</div><div class="ind-detail">${ind.s1 != null ? 'S1: ₹'+fmt(ind.s1)+' R1: ₹'+fmt(ind.r1) : ''}</div></div>
+        </div>
+    `;
+}
+
+// Shared future predictions table updater
+function updateFutureTable(polyFut, momFut, rfFut, gbFut, ensFut, polyAcc, momAcc, rfAcc, gbAcc, best, curPrice, recFut) {
+    if (!momFut || momFut.length === 0) return;
+    const futEl = document.getElementById('chartFuture');
+    futEl.style.display = 'block';
+    let futHtml = `<div class="future-header">Future Predictions — Model Comparison</div>`;
+    futHtml += `<div class="accuracy-bar">
+        <span class="acc-chip" style="border-color:${best==='poly'?'var(--green)':'var(--border)'}"><span class="acc-dot" style="background:var(--yellow)"></span>Poly: <b>${polyAcc}%</b> ${best==='poly'?'⭐':''}</span>
+        <span class="acc-chip" style="border-color:${best==='momentum'?'var(--green)':'var(--border)'}"><span class="acc-dot" style="background:var(--green)"></span>Mom: <b>${momAcc}%</b> ${best==='momentum'?'⭐':''}</span>
+        <span class="acc-chip" style="border-color:${best==='rf'?'var(--green)':'var(--border)'}"><span class="acc-dot" style="background:#f97316"></span>RF: <b>${rfAcc}%</b> ${best==='rf'?'⭐':''}</span>
+        <span class="acc-chip" style="border-color:${best==='gb'?'var(--green)':'var(--border)'}"><span class="acc-dot" style="background:#ec4899"></span>GB: <b>${gbAcc}%</b> ${best==='gb'?'⭐':''}</span>
+        <span class="acc-chip" style="border-color:var(--accent)"><span class="acc-dot" style="background:var(--accent)"></span>Ensemble: weighted avg</span>
+    </div>`;
+    futHtml += '<table class="future-table"><thead><tr><th>Step</th><th>Poly (₹)</th><th>Mom (₹)</th><th>RF (₹)</th><th>GB (₹)</th><th>Ensemble (₹)</th><th>Recommended ⭐</th><th>Change</th></tr></thead><tbody>';
+    for (let i = 0; i < momFut.length; i++) {
+        const tp = polyFut[i] || '-'; const mp = momFut[i]; const rp = rfFut[i] || '-'; const gp = gbFut[i] || '-'; const ep = ensFut[i] || '-';
+        const rec = recFut ? (recFut[i] || '-') : ep;
+        const rd = typeof rec === 'number' ? ((rec - curPrice) / curPrice * 100).toFixed(2) : '-';
+        const rc = typeof rec === 'number' ? (rec >= curPrice ? 'var(--green)' : 'var(--red)') : '';
+        const polyBold = best === 'poly' ? 'font-weight:700;color:var(--green)' : '';
+        const momBold = best === 'momentum' ? 'font-weight:700;color:var(--green)' : '';
+        const rfBold = best === 'rf' ? 'font-weight:700;color:var(--green)' : '';
+        const gbBold = best === 'gb' ? 'font-weight:700;color:var(--green)' : '';
+        futHtml += `<tr><td>+${i+1}</td>
+            <td style="${polyBold}">₹${typeof tp === 'number' ? fmt(tp) : '-'}</td>
+            <td style="${momBold}">₹${fmt(mp)}</td>
+            <td style="${rfBold}">₹${typeof rp === 'number' ? fmt(rp) : '-'}</td>
+            <td style="${gbBold}">₹${typeof gp === 'number' ? fmt(gp) : '-'}</td>
+            <td>₹${typeof ep === 'number' ? fmt(ep) : '-'}</td>
+            <td style="font-weight:700;color:${rc}">₹${typeof rec === 'number' ? fmt(rec) : '-'}</td>
+            <td style="color:${rc}">${typeof rd === 'string' && rd !== '-' ? (parseFloat(rd)>=0?'+':'') + rd + '%' : '-'}</td></tr>`;
+    }
+    futHtml += '</tbody></table>';
+    futEl.innerHTML = futHtml;
+}
+
+// Shared explanation card updater
+function updateExplainCard(polyAcc, momAcc, rfAcc, gbAcc, bestModel, symbol) {
+    const explEl = document.getElementById('chartExplain');
+    explEl.style.display = 'block';
+    const bestName = {poly:'Poly Trend', momentum:'Momentum', rf:'Random Forest', gb:'Gradient Boost'}[bestModel] || bestModel;
+    explEl.innerHTML = `
+        <div class="explain-title">How These Predictions Work</div>
+        <div class="explain-grid">
+            <div class="explain-item"><div class="explain-icon" style="color:var(--accent)">●</div><div><b>Actual Price</b> (Blue Line)<br>Raw market price from Yahoo Finance.</div></div>
+            <div class="explain-item"><div class="explain-icon" style="color:#c084fc">●</div><div><b>Smoothed (EMA)</b> (Purple Line)<br>Exponential Moving Average — reduces noise to show the true trend.</div></div>
+            <div class="explain-item"><div class="explain-icon" style="color:var(--yellow)">◆</div><div><b>Poly Trend</b> — ${polyAcc}% ${bestModel==='poly'?'⭐ RECOMMENDED':''}<br>Polynomial Regression (degree 3) on all data. Captures overall curve.</div></div>
+            <div class="explain-item"><div class="explain-icon" style="color:var(--green)">■</div><div><b>Momentum</b> — ${momAcc}% ${bestModel==='momentum'?'⭐ RECOMMENDED':''}<br>Weighted Linear Regression on last 10 points. Good for short-term direction.</div></div>
+            <div class="explain-item"><div class="explain-icon" style="color:#f97316">▲</div><div><b>Random Forest</b> — ${rfAcc}% ${bestModel==='rf'?'⭐ RECOMMENDED':''}<br>Ensemble of 100 decision trees using 3-lag features.</div></div>
+            <div class="explain-item"><div class="explain-icon" style="color:#ec4899">◇</div><div><b>Gradient Boost</b> — ${gbAcc}% ${bestModel==='gb'?'⭐ RECOMMENDED':''}<br>Boosted trees (100 estimators) using 3-lag features.</div></div>
+            <div class="explain-item"><div class="explain-icon" style="color:var(--accent)">★</div><div><b>Ensemble</b><br>Accuracy-weighted average of all 4 models. Most robust prediction.</div></div>
+        </div>
+        <div class="explain-verdict">
+            ⭐ <b>${bestName}</b> is the best model for <b>${symbol}</b> — most accurate on recent backtested data (last 5 price points).<br>
+            📊 Predictions are <b>adjusted</b> using 10 technical indicators (RSI, BB, EMA, MACD, SuperTrend, Stochastic, Williams %R, CCI, ADX, Pivot Points).
         </div>
     `;
 }
@@ -871,6 +931,23 @@ async function liveChartRefresh() {
 
     // Always render line chart (hidden if candle view)
     renderStockChart(data);
+
+    // Store predictions globally for candlestick overlay
+    _chartPredictions = {
+        trend_future: data.trend_future || [],
+        future_prices: data.future_prices || [],
+        rf_future: data.rf_future || [],
+        gb_future: data.gb_future || [],
+        ensemble_future: data.ensemble_future || [],
+        recommended_future: data.recommended_future || [],
+        better_model: data.better_model || 'ensemble',
+        poly_accuracy: data.poly_accuracy || 0,
+        momentum_accuracy: data.momentum_accuracy || 0,
+        rf_accuracy: data.rf_accuracy || 0,
+        gb_accuracy: data.gb_accuracy || 0,
+        predicted_next: data.predicted_next,
+        current_price: data.current_price
+    };
 
     // Set initial visibility based on view preference
     if (_chartView === 'candle') {
@@ -1119,6 +1196,41 @@ function destroyCandleCharts() {
     if (_macdChart) { _macdChart.remove(); _macdChart = null; }
 }
 
+// OHLCV overlay renderer
+function _renderOHLC(el, symbol, c, vol, interval) {
+    const chg = c.close - c.open;
+    const chgPct = c.open ? ((chg / c.open) * 100).toFixed(2) : '0.00';
+    const cls = chg >= 0 ? 'ohlc-up' : 'ohlc-dn';
+    const arrow = chg >= 0 ? '+' : '';
+    // Format time from unix timestamp
+    let timeStr = '';
+    if (c.time) {
+        const d = new Date(c.time * 1000);
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mi = String(d.getMinutes()).padStart(2, '0');
+        timeStr = `${dd} ${mm} ${hh}:${mi}`;
+    }
+    const volStr = vol != null ? (vol >= 1e6 ? (vol/1e6).toFixed(2) + 'M' : vol >= 1e3 ? (vol/1e3).toFixed(1) + 'K' : vol.toFixed(0)) : '-';
+    el.innerHTML = `
+        <div class="ohlc-row">
+            <span class="ohlc-symbol">${symbol}</span>
+            <span class="ohlc-time">${interval} · ${timeStr}</span>
+        </div>
+        <div class="ohlc-row">
+            <span><span class="ohlc-label">O</span> <span class="ohlc-val ${cls}">${fmt(c.open)}</span></span>
+            <span><span class="ohlc-label">H</span> <span class="ohlc-val ${cls}">${fmt(c.high)}</span></span>
+            <span><span class="ohlc-label">L</span> <span class="ohlc-val ${cls}">${fmt(c.low)}</span></span>
+            <span><span class="ohlc-label">C</span> <span class="ohlc-val ${cls}">${fmt(c.close)}</span></span>
+            <span class="${cls}">${arrow}${chg.toFixed(2)} (${arrow}${chgPct}%)</span>
+        </div>
+        <div class="ohlc-row">
+            <span><span class="ohlc-label">Vol</span> <span class="ohlc-vol">${volStr}</span></span>
+        </div>
+    `;
+}
+
 function renderCandleChart(data) {
     destroyCandleCharts();
 
@@ -1226,50 +1338,128 @@ function renderCandleChart(data) {
         stBear.setData(bearPts.filter(p => !isNaN(p.value)));
     }
 
-    // Future Prediction line — Momentum (gold dashed)
-    if (data.future && data.future.length > 0) {
-        const futLine = _candleChart.addLineSeries({
-            color: '#FFD700', lineWidth: 2, lineStyle: 2,
-            priceLineVisible: false, lastValueVisible: true, title: 'Momentum',
-        });
-        futLine.setData(data.future);
+    // --- PREDICTION OVERLAY from chart-data (stable, accurate) ---
+    const pred = _chartPredictions;
+    let predLinesAdded = false;
+    if (pred && pred.future_prices && pred.future_prices.length > 0) {
+        const lastT = data.candles[data.candles.length - 1].time;
+        const stepSec = data.candles.length >= 2 ? (data.candles[data.candles.length - 1].time - data.candles[data.candles.length - 2].time) : 300;
+        const curVal = data.candles[data.candles.length - 1].close;
+
+        // Helper: convert plain number array to {time, value} starting from last candle
+        const toTV = (arr) => {
+            if (!arr || arr.length === 0) return [];
+            const pts = [{time: lastT, value: curVal}];
+            for (let i = 0; i < arr.length; i++) {
+                pts.push({time: lastT + stepSec * (i + 1), value: arr[i]});
+            }
+            return pts;
+        };
+
+        const best = pred.better_model || 'ensemble';
+
+        // Momentum (green dashed)
+        const momPts = toTV(pred.future_prices);
+        if (momPts.length > 1) {
+            const momLine = _candleChart.addLineSeries({
+                color: '#4ade80', lineWidth: 2, lineStyle: 2,
+                priceLineVisible: false, lastValueVisible: best === 'momentum', title: best === 'momentum' ? 'Mom ⭐' : 'Mom',
+            });
+            momLine.setData(momPts);
+        }
+
+        // Poly Trend (yellow dot-dash)
+        const polyPts = toTV(pred.trend_future);
+        if (polyPts.length > 1) {
+            const polyLine = _candleChart.addLineSeries({
+                color: '#facc15', lineWidth: 1.5, lineStyle: 3,
+                priceLineVisible: false, lastValueVisible: best === 'poly', title: best === 'poly' ? 'Poly ⭐' : 'Poly',
+            });
+            polyLine.setData(polyPts);
+        }
+
+        // RF (orange dashed)
+        const rfPts = toTV(pred.rf_future);
+        if (rfPts.length > 1) {
+            const rfLine = _candleChart.addLineSeries({
+                color: '#f97316', lineWidth: 2, lineStyle: 2,
+                priceLineVisible: false, lastValueVisible: best === 'rf', title: best === 'rf' ? 'RF ⭐' : 'RF',
+            });
+            rfLine.setData(rfPts);
+        }
+
+        // GB (pink dashed)
+        const gbPts = toTV(pred.gb_future);
+        if (gbPts.length > 1) {
+            const gbLine = _candleChart.addLineSeries({
+                color: '#ec4899', lineWidth: 2, lineStyle: 2,
+                priceLineVisible: false, lastValueVisible: best === 'gb', title: best === 'gb' ? 'GB ⭐' : 'GB',
+            });
+            gbLine.setData(gbPts);
+        }
+
+        // Ensemble (purple solid, thicker)
+        const ensPts = toTV(pred.ensemble_future);
+        if (ensPts.length > 1) {
+            const ensLine = _candleChart.addLineSeries({
+                color: '#818cf8', lineWidth: 3, lineStyle: 0,
+                priceLineVisible: false, lastValueVisible: true, title: 'Ensemble',
+            });
+            ensLine.setData(ensPts);
+        }
+
+        predLinesAdded = true;
     }
 
-    // Poly Trend future line
-    if (data.poly_future && data.poly_future.length > 0) {
-        const polyLine = _candleChart.addLineSeries({
-            color: '#facc15', lineWidth: 1.5, lineStyle: 3,
-            priceLineVisible: false, lastValueVisible: false, title: 'Poly',
-        });
-        polyLine.setData(data.poly_future);
+    // --- INDICATOR LEGEND ---
+    const legendEl = document.getElementById('candleLegend');
+    const lgItems = [
+        { color: '#26a69a', label: 'Candle Up', style: 'dot' },
+        { color: '#ef5350', label: 'Candle Down', style: 'dot' },
+    ];
+    if (data.ema9 && data.ema9.length > 0)       lgItems.push({ color: '#2196F3', label: 'EMA 9', style: 'dot' });
+    if (data.ema21 && data.ema21.length > 0)      lgItems.push({ color: '#FF9800', label: 'EMA 21', style: 'dot' });
+    if (data.bb_upper && data.bb_upper.length > 0) lgItems.push({ color: '#9C27B0', label: 'Bollinger', style: 'dash' });
+    if (data.supertrend && data.supertrend.length > 0) {
+        lgItems.push({ color: '#26a69a', label: 'ST Bull', style: 'dot' });
+        lgItems.push({ color: '#ef5350', label: 'ST Bear', style: 'dot' });
     }
+    if (predLinesAdded) {
+        lgItems.push({ color: '#4ade80', label: 'Momentum', style: 'dash' });
+        lgItems.push({ color: '#facc15', label: 'Poly', style: 'dash' });
+        lgItems.push({ color: '#f97316', label: 'RF', style: 'dash' });
+        lgItems.push({ color: '#ec4899', label: 'GB', style: 'dash' });
+        lgItems.push({ color: '#818cf8', label: 'Ensemble', style: 'dot' });
+    }
+    legendEl.innerHTML = lgItems.map(it => {
+        const cls = it.style === 'dash' ? 'lg-dash' : 'lg-dot';
+        const sty = it.style === 'dash' ? `border-color:${it.color}` : `background:${it.color}`;
+        return `<span class="lg-item"><span class="${cls}" style="${sty}"></span>${it.label}</span>`;
+    }).join('');
 
-    // Random Forest future line
-    if (data.rf_future && data.rf_future.length > 0) {
-        const rfLine = _candleChart.addLineSeries({
-            color: '#f97316', lineWidth: 2, lineStyle: 2,
-            priceLineVisible: false, lastValueVisible: true, title: 'RF',
-        });
-        rfLine.setData(data.rf_future);
-    }
+    // --- OHLCV CROSSHAIR TOOLTIP ---
+    const ohlcEl = document.getElementById('candleOHLC');
+    // Build candle lookup by time for O(1) access
+    const candleMap = {};
+    data.candles.forEach(c => { candleMap[c.time] = c; });
+    const volMap = {};
+    if (data.volume) data.volume.forEach(v => { volMap[v.time] = v.value; });
 
-    // Gradient Boost future line
-    if (data.gb_future && data.gb_future.length > 0) {
-        const gbLine = _candleChart.addLineSeries({
-            color: '#ec4899', lineWidth: 2, lineStyle: 2,
-            priceLineVisible: false, lastValueVisible: true, title: 'GB',
-        });
-        gbLine.setData(data.gb_future);
-    }
+    // Show default (latest candle)
+    const lastC = data.candles[data.candles.length - 1];
+    if (lastC) _renderOHLC(ohlcEl, data.symbol, lastC, volMap[lastC.time], data.interval);
 
-    // Ensemble future line (best weighted avg)
-    if (data.ensemble_future && data.ensemble_future.length > 0) {
-        const ensLine = _candleChart.addLineSeries({
-            color: '#818cf8', lineWidth: 3, lineStyle: 1,
-            priceLineVisible: false, lastValueVisible: true, title: 'Ensemble',
-        });
-        ensLine.setData(data.ensemble_future);
-    }
+    _candleChart.subscribeCrosshairMove(param => {
+        if (!param || !param.time) {
+            // Reset to latest
+            if (lastC) _renderOHLC(ohlcEl, data.symbol, lastC, volMap[lastC.time], data.interval);
+            return;
+        }
+        const c = candleMap[param.time];
+        if (c) {
+            _renderOHLC(ohlcEl, data.symbol, c, volMap[param.time], data.interval);
+        }
+    });
 
     _candleChart.timeScale().fitContent();
 
@@ -1357,24 +1547,39 @@ function renderCandleChart(data) {
         macdRO.observe(macdEl);
     }
 
-    // Update chart info with ensemble prediction and best model
+    // Update chart info bar
     const ci = document.getElementById('chartInfo');
     if (ci && data.current_price) {
-        // Use ensemble prediction if available, else momentum
-        const ensFut = data.ensemble_future && data.ensemble_future.length > 1 ? data.ensemble_future[data.ensemble_future.length - 1].value : null;
-        const futEnd = ensFut || (data.future && data.future.length > 1 ? data.future[data.future.length - 1].value : data.current_price);
-        const pctChg = ((futEnd - data.current_price) / data.current_price * 100).toFixed(2);
-        const sig = futEnd > data.current_price ? 'BUY' : futEnd < data.current_price ? 'SELL' : 'HOLD';
-        const sigCls = sig === 'BUY' ? 'badge-buy' : sig === 'SELL' ? 'badge-sell' : 'badge-hold';
-        const bestMdl = data.better_model ? {poly:'Poly',momentum:'Mom',rf:'RF',gb:'GB'}[data.better_model] || data.better_model : '';
+        const lastCandle = data.candles[data.candles.length - 1];
+        const dayChg = lastCandle ? (lastCandle.close - lastCandle.open) : 0;
+        const dayPct = lastCandle && lastCandle.open ? ((dayChg / lastCandle.open) * 100).toFixed(2) : '0.00';
+        const indSum = data.indicator_summary || {};
+        const overall = indSum.overall || 'N/A';
+        const overallCls = (overall === 'Strong Buy' || overall === 'Buy') ? 'badge-buy' : (overall === 'Sell' || overall === 'Strong Sell') ? 'badge-sell' : 'badge-hold';
+        const overallIcon = overall === 'Strong Buy' ? '🟢' : overall === 'Buy' ? '📈' : overall === 'Neutral' ? '⏸' : overall === 'Sell' ? '📉' : '🔴';
+
+        // Add prediction info if available
+        let predHtml = '';
+        if (pred && pred.predicted_next) {
+            const bestName = {poly:'Poly',momentum:'Mom',rf:'RF',gb:'GB'}[pred.better_model] || 'Ensemble';
+            const pDiff = pred.predicted_next - data.current_price;
+            const pPct = ((pDiff / data.current_price) * 100).toFixed(2);
+            const sig = pDiff > 0 ? 'BUY' : pDiff < 0 ? 'SELL' : 'HOLD';
+            const sigCls = sig === 'BUY' ? 'badge-buy' : sig === 'SELL' ? 'badge-sell' : 'badge-hold';
+            predHtml = `
+                <div class="chart-stat"><span class="label">${bestName} ⭐ Next</span><span class="value" style="color:${pDiff >= 0 ? 'var(--green)' : 'var(--red)'}">₹${fmt(pred.predicted_next)}</span></div>
+                <div class="chart-stat"><span class="label">Pred Change</span><span class="value" style="color:${pDiff >= 0 ? 'var(--green)' : 'var(--red)'}">${pDiff >= 0 ? '+' : ''}${pPct}%</span></div>
+                <div class="chart-stat"><span class="label">Signal</span><span class="badge ${sigCls}">${sig}</span></div>
+            `;
+        }
+
         ci.style.display = 'flex';
         ci.innerHTML = `
             <div class="chart-stat"><span class="label">Symbol</span><span class="value">${data.symbol}</span></div>
             <div class="chart-stat"><span class="label">Current</span><span class="value">₹${fmt(data.current_price)}</span></div>
-            <div class="chart-stat"><span class="label">Ensemble Price</span><span class="value" style="color:${futEnd >= data.current_price ? 'var(--green)' : 'var(--red)'}">₹${fmt(futEnd)}</span></div>
-            <div class="chart-stat"><span class="label">Change</span><span class="value" style="color:${pctChg >= 0 ? 'var(--green)' : 'var(--red)'}">${pctChg >= 0 ? '+' : ''}${pctChg}%</span></div>
-            <div class="chart-stat"><span class="label">Signal</span><span class="badge ${sigCls}">${sig}</span></div>
-            ${bestMdl ? `<div class="chart-stat"><span class="label">Best Model</span><span class="badge badge-buy">${bestMdl} ⭐</span></div>` : ''}
+            <div class="chart-stat"><span class="label">Last Candle</span><span class="value" style="color:${dayChg >= 0 ? 'var(--green)' : 'var(--red)'}">${dayChg >= 0 ? '+' : ''}${dayPct}%</span></div>
+            <div class="chart-stat"><span class="label">Tech Signal</span><span class="badge ${overallCls}">${overallIcon} ${overall}</span></div>
+            ${predHtml}
             <div class="chart-stat"><span class="label">Interval</span><span class="value">${data.interval}</span></div>
             <div class="chart-stat"><span class="label">Candles</span><span class="value">${data.candles.length}</span></div>
         `;

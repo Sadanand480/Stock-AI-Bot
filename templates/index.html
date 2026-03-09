@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Financial Advisor</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=9">
 </head>
 <body>
 
@@ -347,7 +347,11 @@
                 </div>
                 <div id="chartInfo" class="chart-info" style="display:none"></div>
                 <div id="candleChartWrap" style="display:none">
-                    <div id="candleChartMain" style="width:100%;height:420px"></div>
+                    <div style="position:relative">
+                        <div id="candleOHLC" class="candle-ohlc"></div>
+                        <div id="candleLegend" class="candle-legend"></div>
+                        <div id="candleChartMain" style="width:100%;height:420px"></div>
+                    </div>
                     <div class="sub-chart-label">RSI (14)</div>
                     <div id="candleChartRSI" style="width:100%;height:130px"></div>
                     <div class="sub-chart-label">MACD (12,26,9)</div>
@@ -398,6 +402,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-<script src="{{ url_for('static', filename='app.js') }}?v=9"></script>
+<script src="{{ url_for('static', filename='app.js') }}?v=14"></script>
 </body>
 </html>

@@ -817,6 +817,34 @@ body {
 #candleChartMain, #candleChartRSI, #candleChartMACD {
     width: 100%;
 }
+/* ---------- CANDLE OHLC OVERLAY ---------- */
+.candle-ohlc {
+    position: absolute; top: 8px; left: 12px; z-index: 10;
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    color: var(--text-secondary); line-height: 1.6;
+    pointer-events: none; background: transparent;
+}
+.candle-ohlc .ohlc-symbol { font-size: 13px; font-weight: 800; color: var(--text-primary); margin-right: 8px; }
+.candle-ohlc .ohlc-time { color: var(--text-muted); font-size: 10px; }
+.candle-ohlc .ohlc-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.candle-ohlc .ohlc-label { color: var(--text-muted); font-weight: 500; }
+.candle-ohlc .ohlc-val { font-weight: 700; }
+.candle-ohlc .ohlc-up { color: var(--green); }
+.candle-ohlc .ohlc-dn { color: var(--red); }
+.candle-ohlc .ohlc-vol { color: var(--accent); font-size: 10px; }
+
+/* ---------- CANDLE LEGEND ---------- */
+.candle-legend {
+    position: absolute; top: 8px; right: 12px; z-index: 10;
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    color: var(--text-muted); pointer-events: none;
+    display: flex; flex-wrap: wrap; gap: 6px 12px; max-width: 50%;
+    justify-content: flex-end;
+}
+.candle-legend .lg-item { display: flex; align-items: center; gap: 4px; }
+.candle-legend .lg-dot { width: 8px; height: 3px; border-radius: 1px; flex-shrink: 0; }
+.candle-legend .lg-dash { width: 8px; height: 0; border-top: 2px dashed; flex-shrink: 0; }
+
 .sub-chart-label {
     font-size: 10px; font-weight: 700; font-family: var(--mono);
     color: var(--text-muted); letter-spacing: 1px;
